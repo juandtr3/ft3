@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MAURICIOGAME</title>
+    <style>
+        /* Estilos CSS */
+        body, html {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+
+        /* Estilos para la pantalla de inicio */
+        .splash-container {
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+           
+            background-size: cover;
+            background-position: center;
+        }
+
+        .startButton {
+            background-color: transparent;
+            padding: 15px 20px;
+            border: none;
+            border-radius: 30px;
+            text-align: center;
+        }
+
+        .startButton:hover {
+            background-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .startButtonText {
+            color: #fff;
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        /* Estilos para la pantalla de juego */
+        .game-container {
+            display: none; /* Ocultar la pantalla de juego por defecto */
+            height: 100%;
+            background-image: url('https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcSoOix6QHj8Bt2YwAcHba450pt8aLZTsVnVztqqJZli2AroxSta');
+            background-size: cover;
+            background-position: center;
+        }
+
+        .container {
+            height: calc(100% - 150px); /* Ajuste para evitar superposición */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 150px; /* Espacio para el menú */
+        }
+
+        .row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .cell {
+            width: 80px;
+            height: 80px;
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        .cell.disabled {
+            background-color: #888;
+            cursor: not-allowed;
+        }
+
+        .alert {
+            position: absolute;
+            top: 20px;
+            width: 100%;
+            text-align: center;
+            display: none;
+        }
+
+        .info {
+            position: relative;
+            margin-top: -120px;
+            width: 100%;
+            text-align: center;
+            background-color: rgba(0, 0, 0, 0.5);
+            color: #fff;
+            padding: 10px;
+            border-radius: 10px;
+        }
+
+        .player-info {
+            color: #fff;
+            margin-bottom: 10px;
+        }
+
+        .clock {
+            font-size: 24px;
+            color: #fff;
+            margin-top: 10px;
+        }
+
+        .pass-turn-button {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background-color: #ffcc00;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        /* Colores de las fichas */
+        .blue-diamond { background-color: blue; }
+        .green-diamond { background-color: green; }
+        .yellow-gold { background-color: yellow; }
+        .red-gold { background-color: red; }
+        .red-ruby { background-color: red; }
+        .yellow-ruby { background-color: yellow; }
+        .green-trophy { background-color: green; }
+        .blue-trophy { background-color: blue; }
+    </style>
+</head>
+<body>
+    <!-- Pantalla de inicio -->
+    <div class="splash-container">
+        <button class="startButton" onclick="startGame()">Iniciar</button>
+    </div>
+
+    <!-- Pantalla de juego -->
+    <div class="game-container">
+        <div class="container">
+            <div class="row" id="diamond-row"></div>
+            <div class="row" id="gold-row"></div>
+            <div class="row" id="ruby-row"></div>
+            <div class="row" id="trophy-row"></div>
+        </div>
+        <div class="alert" id="alert"></div>
+        <div class="info" id="info"></div>
+        <div class="pass-turn-button" onclick="handlePassTurn()">Pasar Turno</div>
+    </div>
+
+    <script>
+        // JavaScript
+        // Define game state
+        let currentPlayer = 'Ruperto';
+        let score = { 'Ruperto': 100, 'Juan': 100, 'Mauricio': 100 };
+        let turnCount = 1;
+        let timeLeft = 10;
+        let disableBoard = false;
+        let diamondStates = [
+            { available: true, emoji: '💎' },
+            { available: true, emoji: '💎' },
+            { available: true, emoji: '☀️' },
+            { available: true, emoji: '☀️' }
+        ];
+        let goldBarStates = [
+            { available: true, emoji: '💰' },
+            { available: true, emoji: '💰' },
+            { available: true, emoji: '🥇' },
+            { available: true, emoji: '🥇' }
+        ];
+        let rubyStates = [
+            { available: true, emoji: '🔴' },
+            { available: true, emoji: '🔴' },
+            { available: true, emoji: '🍀' },
+            { available: true, emoji: '🍀' }
+        ];
+        let trophyStates = [
+            { available: true, emoji: '💚' },
+            { available: true, emoji: '💚' },
+            { available: true, emoji: '🏆' },
+            { available: true, emoji: '🏆' }
+        ];
+        let takenRowsByPlayer = { Ruperto: [], Juan: [], Mauricio: [] };
+        let takenCount = 0;
+
+        // Funciones
+        const startGame = () => {
+            // Mostrar pantalla de juego y ocultar pantalla de inicio
+            document.querySelector('.splash-container').style.display = 'none';
+            document.querySelector('.game-container').style.display = 'block';
+            // Iniciar el juego
+            renderGameState();
+            startTurnTimer();
+        };
+
+        const handlePassTurn = () => {
+            // Lógica para pasar turno
+            console.log('Pasando turno');
+            currentPlayer = currentPlayer === 'Ruperto' ? 'Juan' : currentPlayer === 'Juan' ? 'Mauricio' : 'Ruperto';
+            timeLeft = 10;
+            renderGameState();
+            startTurnTimer(); // Iniciar el temporizador del siguiente turno
+        };
+
+        const resetGameTable = () => {
+            // Lógica para reiniciar la mesa de juego
+            console.log('Reiniciando la mesa de juego');
+            currentPlayer = 'Ruperto';
+            score = { 'Ruperto': 100, 'Juan': 100, 'Mauricio': 100 };
+            turnCount = 1;
+            timeLeft = 10;
+            disableBoard = false;
+            takenCount = 0;
+            // Reiniciar las fichas y barajarlas
+            shuffleAndResetStates(diamondStates);
+            shuffleAndResetStates(goldBarStates);
+            shuffleAndResetStates(rubyStates);
+            shuffleAndResetStates(trophyStates);
+            takenRowsByPlayer = { Ruperto: [], Juan: [], Mauricio: [] };
+            renderGameState();
+        };
+
+        const renderGameState = () => {
+            // Función para renderizar el estado del juego
+            console.log('Renderizando estado del juego');
+            renderBoard();
+            renderInfo();
+        };
+
+        const renderBoard = () => {
+            // Renderizar el tablero de juego
+            console.log('Renderizando tablero de juego');
+            renderRow(diamondStates, 'diamond-row');
+            renderRow(goldBarStates, 'gold-row');
+            renderRow(rubyStates, 'ruby-row');
+            renderRow(trophyStates, 'trophy-row');
+        };
+
+        const renderRow = (rowArray, rowId) => {
+            // Renderizar una fila del tablero de juego
+            const rowElement = document.getElementById(rowId);
+            rowElement.innerHTML = '';
+            rowArray.forEach((item, index) => {
+                const cellElement = document.createElement('div');
+                cellElement.className = `cell ${getColorClass(item)}`;
+                cellElement.innerHTML = `<span>${item.emoji}</span>`;
+                if (!item.available || disableBoard) {
+                    cellElement.classList.add('disabled');
+                } else {
+                    cellElement.onclick = () => handlePress(item.emoji, index, rowArray, rowId);
+                }
+                rowElement.appendChild(cellElement);
+            });
+        };
+
+        const getColorClass = (item) => {
+            // Obtener la clase de color correspondiente para la ficha
+            if (item.emoji === '💎' || item.emoji === '☀️') return 'blue-diamond';
+            if (item.emoji === '💰' || item.emoji === '🥇') return 'yellow-gold';
+            if (item.emoji === '🔴' || item.emoji === '🍀') return 'red-ruby';
+            if (item.emoji === '💚' || item.emoji === '🏆') return 'green-trophy';
+        };
+
+        const renderInfo = () => {
+            const infoElement = document.getElementById('info');
+            // Mostrar la información del jugador actual
+            infoElement.innerHTML = `
+                <div class="player-info">
+                    <p>Jugador: ${currentPlayer}</p>
+                    <p>Puntaje: ${score[currentPlayer]}</p>
+                    <p class="clock" id="clock">Tiempo restante: ${timeLeft}</p>
+                </div>
+            `;
+        };
+
+        const handlePress = (emoji, index, rowArray, rowId) => {
+            // Lógica para manejar el clic en una celda del tablero
+            console.log('Manejando clic en celda');
+            if (!rowArray[index].available || disableBoard) return;
+
+            const change = index % 2 === 0 ? 20000 : -23000;
+            const message = `${currentPlayer} ${change > 0 ? 'ganó' : 'perdió'} ${Math.abs(change)} puntos.`;
+
+            score[currentPlayer] += change;
+            rowArray[index].available = false;
+            rowArray[index].emoji = change > 0 ? '😀' : '😡';
+
+            takenRowsByPlayer[currentPlayer].push(rowArray);
+            takenCount++;
+
+            if (takenCount === 15) {
+                resetGameTable(); // Reiniciar el juego cuando se toman 15 fichas
+            }
+
+            showAlert(message);
+            renderGameState();
+        };
+
+        const showAlert = (message) => {
+            // Mostrar una alerta en la interfaz
+            const alertElement = document.getElementById('alert');
+            alertElement.innerText = message;
+            alertElement.style.display = 'block';
+            setTimeout(() => {
+                alertElement.style.display = 'none';
+            }, 3000);
+        };
+
+        const shuffleAndResetStates = (stateArray) => {
+            // Mezclar las fichas y reiniciar su disponibilidad
+            shuffleArray(stateArray);
+            stateArray.forEach(item => {
+                item.available = true;
+            });
+        };
+
+        const shuffleArray = (array) => {
+            // Función para mezclar un array
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        };
+
+        let turnTimer; // Variable para almacenar el temporizador del turno
+
+        const startTurnTimer = () => {
+            // Iniciar temporizador del turno
+            timeLeft = 10;
+            updateClockDisplay(); // Actualizar visualización inicial
+            turnTimer = setInterval(() => {
+                if (timeLeft > 0) {
+                    timeLeft--;
+                    updateClockDisplay(); // Actualizar visualización
+                } else {
+                    clearInterval(turnTimer); // Limpiar temporizador
+                    handlePassTurn(); // Pasar al siguiente turno cuando se agote el tiempo
+                }
+            }, 1000);
+        };
+
+        const updateClockDisplay = () => {
+            // Actualizar la visualización del temporizador
+            const clockElement = document.getElementById('clock');
+            clockElement.innerText = `Tiempo restante: ${timeLeft}`;
+        };
+
+        // Configuración inicial
+        window.onload = () => {
+            // Renderizar estado inicial del juego
+            renderGameState();
+        };
+    </script>
+</body>
+</html>
